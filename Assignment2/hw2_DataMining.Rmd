@@ -182,3 +182,25 @@ lasso_confint
 **From the results, we assertain that lasso and least squares produce similar estimates for $\beta_1$ with lasso providing the tightest bound of all 3. Ridge produces a significantly lower estimate than both lasso and least squares with a bound that is not as tight as lasso but significantly tighter than least squares**
 
 
+## Problem 4(Question 9 in ISL Pg. 263 )
+9.In this exercise, we will predict the number of applications received  
+using the other variables in the College data set.
+```{r}
+data(College)
+```
+(a). Split the data set into a training set and a test set.
+set.seed(1)
+```{r}
+train <- sample(c(TRUE, FALSE), nrow(College), rep = TRUE)
+test <- (!train)
+x <- model.matrix()
+```
+(b). Fit a linear model using least squares on the training set, and report the test error obtained.
+(c). Fit a ridge regression model on the training set, with $\lambda$
+chosen by cross-validation. Report the test error obtained.
+(d). Fit a lasso model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+(e). Fit a PCR model on the training set, with M chosen by cross validation. Report the test error obtained, along with the value of M selected by cross-validation.
+(f). Fit a PLS model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+(g). Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+

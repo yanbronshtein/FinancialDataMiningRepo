@@ -110,28 +110,43 @@ lasso_confint
 
 #a). Split the data set into a training set and a test set.
 data(College)
-college_data <- College %>% as.data.frame()
+#college_data <- College %>% as.data.frame()
 set.seed(1)
-train <- sample(c(TRUE, FALSE), nrow(College), rep = TRUE)
-test <- (!train)
-college_train <- College[train, ]
-college_test <- College[test, ]
-#using sample
+smp_siz <- dim(College)[1] / 2
+
+train <- sample(seq_len(nrow(College)),size = smp_siz)  # Randomly identifies therows equal to sample size ( defined in previous instruction) from  all the rows of Smarket dataset and stores the row number in train_ind
+test <- -train
+data_train <- College[train,] #creates the training dataset with row numbers stored in train_ind
+data_test <- College[test,]
 
 #b). Fit a linear model using least squares on the training set, and report
 #the test error obtained
-lm_fit <- lm(Apps ~ ., data = college_train)
-lm_fit_predict <- predict(lm_fit, college_test)
-lm_fit_predict
-test_error = mean((lm_fit_predict - college_test[, 'Apps'])^2)
-test_error
+lm_model <- lm(Apps ~ ., data = data_train)
+lm_predict <- predict(lm_model, data_test)
+lm_predict
+test_error_least_square = mean((data_test[, 'Apps'] - lm_predict)^2)
+test_error_least_square
 #c). Fit a ridge regression model on the training set, with lambda chosen by
 #cross validation. Report the test error obtained
-train_mat <- model.matrix(Apps ~ ., data = college_train)
-lambda_min <- cv.glmnet(train_mat, college_train[, 'Apps'], alpha = 0)$lambda.min
-ridge_fit <- glmnet(train_mat, ) 
-test_mat <- model.matrix(Apps ~ ., data = college_test)
-#c-d Glmnet
+x_mat_train <- model.matrix(Apps ~ ., data = data_train)[, -1]
+x_mat_test <- model.matrix(Apps ~ ., data = data_test)[, -1]
+
+lambda_min_ridge <- cv.glmnet(x_mat_train, data_train[, 'Apps'], alpha = 0)$lambda.min
+lambda_min_ridge
+ridge_model <- glmnet(x_mat_train, data_train[, 'Apps'], lambda = lambda_min_ridge, alpha = 0) 
+ridge_predict <- predict(ridge_model, newx = x_mat_test, s = lambda_min_ridge)
+
+test_error_ridge = mean((data_test[, 'Apps'] - ridge_predict)^2)
+test_error_ridge
+
+lambda_min_lasso <- cv.glmnet(x_mat_train, data_train[, 'Apps'], alpha = 1)$lambda.min
+lambda_min_lasso
+lasso_model <- glmnet(x_mat_train, data_train[, 'Apps'], lambda = lambda_min_lasso, alpha = 1) 
+lasso_predict <- predict(lasso_model, newx = x_mat_test, s = lambda_min_lasso)
+
+test_error_lasso = mean((data_test[, 'Apps'] - lasso_predict)^2)
+test_error_lasso
+
 #cv.glmnet()
 #gmlnet()
 
