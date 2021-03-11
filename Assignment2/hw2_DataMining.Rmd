@@ -1,0 +1,184 @@
+---
+title: "HW2_DataMining"
+author: "Yaniv Bronshtein"
+date: "3/9/2021"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**import libraries**
+```{r}
+library(tidyverse)
+library(glmnet)
+library(Matrix)
+library(rsample)
+library(ISLR)
+```
+## Question 3
+*Bootstrap with Least squares, Ridge and Lasso*
+Let $\beta = (\beta_1,\beta_2, ..., \beta_p)$ and let x,y be random variables such that the entries of x are i.i.d standard normal variables (i.e, with mean zero and variance one) and $y = \beta^Tx + \epsilon$ where $\epsilon \sim N(0,1)$.
+(a). Simulate a dataset $(x_1, y_1), ...(x_n, y_n)$ as n i.i.d copies of the random variables x,y defined above, with $n=800$, $p = 200$, and $\beta_j = j^{-1}$.
+```{r}
+#Define n and p
+p <- 200
+n <- 800
+#Construct x by create p copies of rnorm() which will generate n numbers. Each column represents a random variable x_i
+x <- replicate(p, rnorm(n = n, mean = 0, sd = 1))
+#Create the j vector
+j = 1:p
+#Beta is j inverted
+beta <- j^-1
+#Transform beta
+beta_t <- beta %>% as.matrix()
+#epsilon is a column vector nX1
+epsilon <- rnorm(n = n, mean = 0, sd = 1) %>% as.matrix()
+#Construct matrix y according to the formula in the question
+y = x %*% beta_t + epsilon
+
+#Create a data frame from y and x
+df <- data.frame("y"= y, x) 
+
+```
+(b) The goal of this problem is to construct confidence intervals for $\beta_1$ using Bootstrap method.
+
+**Specify a 95% confidence interval.**
+Use $\psi$ to avoid confusion with alpha in glmnet()
+```{r}
+psi = 0.05
+```
+
+**Generate the bootstraps to be used for all the models**
+```{r}
+set.seed(1)
+samples <-df %>% bootstraps(1000)
+```
+  (i). Construct confidence intervals for $\beta_1$ by boostrapping the data and applying Least Squares to the boostrapped data set.
+**Create a function to return the coefficients of the linear model**
+```{r}
+get_beta1_lm <- function(data){
+  x_mat <- model.matrix(y~.,data)[,-1]
+  y <- as.matrix(data['y'])
+  lm_model <- lm(y ~ x_mat)
+  beta_1_estim <- coef(lm_model)[2] 
+  return(beta_1_estim)
+}
+```
+
+
+**Create a vector of 1000 bootstrap estimates of beta 1 for least square**
+```{r}
+estim_lm <- samples$splits %>% 
+  map(.,~as.data.frame(.)) %>% 
+  map(.,~get_beta1_lm(.)) %>%
+  simplify()
+
+estim_lm
+```
+**Display the confidence interval for the bootstrap estimates by applying the quantile() function to get the lower and upper bounds and median() to get the estimate** 
+```{r}
+lm_confint <- estim_lm %>% 
+  as.data.frame() 
+colnames(lm_confint)[1] = "estimate"  
+lm_confint <- lm_confint %>%
+  summarise(conf.low = quantile(estimate, psi / 2),
+            median = median(estimate),
+            conf.high = quantile(estimate, 1 - psi / 2))                                       
+lm_confint
+```
+  ii. Construct confidence intervals for $\beta_1$ by boostrapping the data and applying Ridge to the boostrapped data set.
+**Define x_mat_cv and y_cv to be used for cv.glmnet() for both ridge and lasso **
+```{r}
+x_mat_cv = model.matrix(y~.,df)[,-1]
+y_cv = as.matrix(df['y'])
+```
+
+**Use cv.glmnet() to perform cross validation for ridge to extract the optimal(minimal) lambda to be used in glmnet()**
+```{r}
+best_lambda_ridge <- (cv.glmnet(x_mat_cv, y_cv, alpha = 0))$lambda.min
+```
+
+**Create a function to return the coefficients of the Ridge model**
+```{r}
+get_beta1_ridge = function(data){
+  x_mat = model.matrix(y~.,data)[,-1]
+  y = as.matrix(data['y'])
+  ridge_model = glmnet(x_mat, y, alpha = 0, lambda = best_lambda_ridge)
+  coef_ridge <- coef(ridge_model)
+  beta_1_estim <- coef_ridge[2, 1]
+  return(beta_1_estim) 
+}
+```
+
+**Create a vector of 1000 bootstrap estimates of beta 1 for ridge**
+```{r}
+estim_ridge <- samples$splits %>% 
+  map(.,~as.data.frame(.)) %>% 
+  map(.,~get_beta1_ridge(.)) %>%
+  simplify()
+
+estim_ridge
+```
+
+**Display the confidence interval for the bootstrap estimates by applying the quantile() function to get the lower and upper bounds and median() to get the estimate** 
+```{r}
+ridge_confint <- estim_ridge %>% 
+  as.data.frame() 
+colnames(ridge_confint)[1] = "estimate"  
+ridge_confint <- ridge_confint %>%
+  summarise(conf.low = quantile(estimate, psi / 2),
+            median = median(estimate),
+            conf.high = quantile(estimate, 1 - psi / 2))                                       
+
+ridge_confint
+```
+
+  (iii). Construct confidence intervals for $\beta_1$ by boostrapping the data and applying Lasso to the bootstrapped data set.
+
+**Use cv.glmnet() to perform cross validation for lasso to extract the optimal(minimal) lambda to be used in glmnet()**
+```{r}
+best_lambda_lasso <- (cv.glmnet(x_mat_cv, y_cv, alpha = 1))$lambda.min
+```
+
+**Create a function to return the coefficients of the Lasso model**
+```{r}
+get_beta1_lasso = function(data){
+  x_mat = model.matrix(y~.,data)[,-1]
+  y = as.matrix(data['y'])
+  lasso_model = glmnet(x_mat, y, alpha = 1, lambda = best_lambda_lasso)
+  coef_lasso <- coef(lasso_model)
+  beta_1_estim <- coef_lasso[2, 1]
+  return(beta_1_estim) 
+}
+```
+
+**Create a vector of 1000 bootstrap estimates of beta 1 for lasso**
+```{r}
+estim_lasso <- samples$splits %>% 
+  map(.,~as.data.frame(.)) %>% 
+  map(.,~get_beta1_lasso(.)) %>%
+  simplify()
+
+estim_lasso
+```
+
+**Display the confidence interval for the bootstrap estimates by applying the quantile() function to get the lower and upper bounds and median() to get the estimate** 
+```{r}
+lasso_confint <- estim_lasso %>% 
+  as.data.frame() 
+colnames(lasso_confint)[1] = "estimate"  
+lasso_confint <- lasso_confint %>%
+  summarise(conf.low = quantile(estimate, psi / 2),
+            median = median(estimate),
+            conf.high = quantile(estimate, 1 - psi / 2))                                       
+lasso_confint
+```
+
+(c). Comment on the obtained results
+**From the results, we assertain that lasso and least squares produce similar estimates for $\beta_1$ with lasso providing the tightest bound of all 3. Ridge produces a significantly lower estimate than both lasso and least squares with a bound that is not as tight as lasso but significantly tighter than least squares**
+
+
