@@ -190,4 +190,25 @@ test_error_pls
 #(g). Comment on the results obtained. How accurately can we predict the number 
 #of college applications received? Is there much difference among the 
 #test errors resulting from these five approaches?
-  
+
+lm_test_r2 <- 1 - test_error_least_square / mean((data_test[, 'Apps'] - mean(data_test[, 'Apps']))^2)
+ridge_test_r2 <- 1 - test_error_ridge / mean((data_test[, 'Apps'] - mean(data_test[, 'Apps']))^2)
+lasso_test_r2 <- 1 - test_error_lasso / mean((data_test[, 'Apps'] - mean(data_test[, 'Apps']))^2)
+pcr_test_r2 <- 1 - test_error_pcr / mean((data_test[, 'Apps'] - mean(data_test[, 'Apps']))^2)
+pls_test_r2 <- 1 - test_error_pls / mean((data_test[, 'Apps'] - mean(data_test[, 'Apps']))^2)
+
+cat("OLS", "\n")
+cat("Test Error", test_error_least_square, "R squared", lm_test_r2, sep = "\t")
+
+cat("Ridge")
+cat("Test Error", test_error_ridge, "R squared", ridge_test_r2, sep = "\t")
+
+cat("Lasso")
+cat("Test Error", test_error_lasso, "R squared", lasso_test_r2, sep = "\t")
+
+cat("PCR")
+cat("Test Error", test_error_pcr, "R squared", pls_test_r2, sep = "\t")
+
+cat("PLS")
+cat("Test Error", test_error_pls, "R squared", lm_test_r2, sep = "\t")
+
