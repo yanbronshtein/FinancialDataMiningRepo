@@ -3,6 +3,7 @@ library(glmnet)
 library(Matrix)
 library(rsample)
 library(ISLR)
+library(pls)
 p <- 200
 n <- 800
 x <- replicate(p, rnorm(n = n, mean = 0, sd = 1))
@@ -147,9 +148,46 @@ lasso_predict <- predict(lasso_model, newx = x_mat_test, s = lambda_min_lasso)
 test_error_lasso = mean((data_test[, 'Apps'] - lasso_predict)^2)
 test_error_lasso
 
+coef_lasso <- coef(lasso_model) %>% as.vector()
+coef_lasso_non_zero <- subset(coef_lasso, !(coef_lasso %in% 0.0))
+coeff_lasso_non_zero
 #cv.glmnet()
 #gmlnet()
 
-#e-f. PCR -PLS straight from the book
+#(e). Fit a PCR model on the training set, with M chosen by cross validation. 
+#Report the test error obtained, along with the value of M selected by 
+#cross-validation.
+
+set.seed(1)
+pcr_model <- pcr(Apps ~., data = data_train, scale = TRUE,
+                 validation = "CV")
+
+summary(pcr_model)
+validationplot(pcr_model, val.type = "MSEP")
+#Based on the plot, the smallest value of M selected through cross validation
+#is 5 or 6
 
 
+pcr_predict <- predict(pcr_model, x_mat_test, ncomp = 6)
+test_error_pcr <- mean((data_test[, 'Apps'] - pcr_predict)^2)
+test_error_pcr
+
+#(f). Fit a PLS model on the training set, with M chosen by cross-validation. 
+#Report the test error obtained, along with the value of M selected by 
+#cross-validation.
+set.seed(1)
+pls_model <- plsr(Apps ~ ., data = data_train, scale = TRUE, validation = "CV")
+summary(pls_model)
+
+validationplot(pls_model, val.type = "MSEP")
+#Based on the plot, the smallest value of M selected through cross validation is
+#6 or  7. We shall choose 6
+
+pls_predict <- predict(pls_model, x_mat_test, ncomp = 6)
+test_error_pls <- mean((data_test[, 'Apps'] - pls_predict)^2)
+test_error_pls
+
+#(g). Comment on the results obtained. How accurately can we predict the number 
+#of college applications received? Is there much difference among the 
+#test errors resulting from these five approaches?
+  

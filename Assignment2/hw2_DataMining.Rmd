@@ -18,6 +18,7 @@ library(glmnet)
 library(Matrix)
 library(rsample)
 library(ISLR)
+library(pls)
 ```
 ## Question 3
 *Bootstrap with Least squares, Ridge and Lasso*
@@ -191,16 +192,126 @@ data(College)
 (a). Split the data set into a training set and a test set.
 set.seed(1)
 ```{r}
-train <- sample(c(TRUE, FALSE), nrow(College), rep = TRUE)
-test <- (!train)
-x <- model.matrix()
+data(College)
+set.seed(1)
+smp_siz <- dim(College)[1] / 2
+
+train <- sample(seq_len(nrow(College)),size = smp_siz)  
+test <- -train
+data_train <- College[train,]
+data_test <- College[test,]
 ```
 (b). Fit a linear model using least squares on the training set, and report the test error obtained.
+```{r}
+lm_model <- lm(Apps ~ ., data = data_train)
+lm_predict <- predict(lm_model, data_test)
+lm_predict
+
+test_error_least_square = mean((data_test[, 'Apps'] - lm_predict)^2)
+test_error_least_square
+```
+
+**For the next series of questions, we need our feature data to be in** 
+**matrix form because glmnet() requires it. Thus we create a train and test**
+**matrix containing only feature values from our respectful train and test data**
+```{r}
+x_mat_train <- model.matrix(Apps ~ ., data = data_train)[, -1]
+x_mat_test <- model.matrix(Apps ~ ., data = data_test)[, -1]
+```
 (c). Fit a ridge regression model on the training set, with $\lambda$
 chosen by cross-validation. Report the test error obtained.
+**Extract the optimal lambda for lasso using cv.glmnet()**
+```{r}
+lambda_min_ridge <- cv.glmnet(x_mat_train, data_train[, 'Apps'], alpha = 0)$lambda.min
+lambda_min_ridge
+```
+
+**Fit a ridge_model using glmnet() with the optimal lambda**
+**Then, call predict() to get the prediction values to ultimately compute the test error**
+```{r}
+ridge_model <- glmnet(x_mat_train, data_train[, 'Apps'], lambda = lambda_min_ridge, alpha = 0) 
+ridge_predict <- predict(ridge_model, newx = x_mat_test, s = lambda_min_ridge)
+
+test_error_ridge = mean((data_test[, 'Apps'] - ridge_predict)^2)
+test_error_ridge
+```
 (d). Fit a lasso model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+**Extract the optimal lambda for lasso using cv.glmnet()**
+```{r}
+lambda_min_lasso <- cv.glmnet(x_mat_train, data_train[, 'Apps'], alpha = 1)$lambda.min
+lambda_min_lasso
+```
+
+**Fit a ridge_model using glmnet() with the optimal lambda**
+**Then, call predict() to get the prediction values to ultimately compute the test error**
+```{r}
+lasso_model <- glmnet(x_mat_train, data_train[, 'Apps'], lambda = lambda_min_lasso, alpha = 1) 
+lasso_predict <- predict(lasso_model, newx = x_mat_test, s = lambda_min_lasso)
+
+test_error_lasso = mean((data_test[, 'Apps'] - lasso_predict)^2)
+test_error_lasso
+```
+
+**Extract the coefficients from the lasso model**
+```{r}
+coef_lasso <- coef(lasso_model)
+coef_lasso
+```
+
+**Filter out the coefficients equal to zero. Note this process removes the names**
+```{r}
+coef_lasso_vec <- coef_lasso %>% as.vector()
+coef_lasso_vec
+coef_lasso_non_zero <- subset(coef_lasso_vec, !(coef_lasso_vec %in% 0.0))
+coef_lasso_non_zero
+```
+
 (e). Fit a PCR model on the training set, with M chosen by cross validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+**Fit a PCR model using Cross Validation**
+```{r}
+set.seed(1)
+pcr_model <- pcr(Apps ~., data = data_train, scale = TRUE,
+                 validation = "CV")
+
+summary(pcr_model)
+```
+
+**Generate a validation plot to determine the optimal value of M for pcr**
+**Based on the plot, M is either 5 or 6. We shall go with 6**
+```{r}
+validationplot(pcr_model, val.type = "MSEP")
+```
+
+**Report the test error obtained for pcr**
+```{r}
+pcr_predict <- predict(pcr_model, x_mat_test, ncomp = 6)
+test_error_pcr <- mean((data_test[, 'Apps'] - pcr_predict)^2)
+test_error_pcr
+```
+
 (f). Fit a PLS model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
 
+**Fit a PLS model using Cross Validation**
+```{r}
+set.seed(1)
+pls_model <- plsr(Apps ~ ., data = data_train, scale = TRUE, validation = "CV")
+
+summary(pls_model)
+```
+
+**Generate a validation plot to determine the optimal value of M for pls**
+**Based on the plot, M is either 6 or 7. We shall go with 6**
+```{r}
+validationplot(pls_model, val.type = "MSEP")
+```
+
+**Report the test error obtained for pcr**
+```{r}
+pls_predict <- predict(pls_model, x_mat_test, ncomp = 6)
+test_error_pls <- mean((data_test[, 'Apps'] - pls_predict)^2)
+test_error_pls
+```
 (g). Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
 
