@@ -2,7 +2,7 @@
 title: "HW2_DataMining"
 author: "Yaniv Bronshtein"
 date: "3/9/2021"
-output: html_document
+output: pdf_document
 ---
 
 
