@@ -2,7 +2,7 @@
 title: "Data Mining HW4 Applied"
 author: "Yaniv Bronshtein"
 date: "5/7/2021"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
